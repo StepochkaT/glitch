@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-4">
+    <h2>Профиль</h2>
+
+    <div class="d-flex align-items-center mb-3">
+        <img src="{{ url_for('static', filename=current_user.image_path) }}"
+             class="rounded-circle me-3"
+             width="120" height="120"
+             style="object-fit: cover; border: 2px solid #ccc;">
+        <form method="POST" action="{{ url_for('upload_avatar') }}" enctype="multipart/form-data" class="d-flex flex-column">
+            {{ image_form.hidden_tag() }}
+            <label class="btn btn-outline-secondary mb-2">
+                Загрузить фото
+                {{ image_form.image(class="d-none") }}
+            </label>
+            {{ image_form.submit(class="btn btn-primary btn-sm") }}
+        </form>
+    </div>
+
+    <p><strong>Имя пользователя:</strong> {{ current_user.username }}</p>
+    <p><strong>Email:</strong> {{ current_user.email }}</p>
+    <p><strong>Дата регистрации:</strong> {{ current_user.created_date.strftime('%d.%m.%Y') }}</p>
+
+    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#editNameModal">Изменить имя</button>
+    <button class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#changePasswordModal">Сменить пароль</button>
+</div>
+
+<div class="modal fade" id="editNameModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <form method="POST" action="{{ url_for('profile') }}">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Изменить имя пользователя</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+            {{ name_form.hidden_tag() }}
+            {{ name_form.username.label(class="form-label") }}
+            {{ name_form.username(class="form-control") }}
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-primary">Сохранить</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal fade" id="changePasswordModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <form method="POST" action="{{ url_for('change_password') }}">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Сменить пароль</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+            {{ password_form.hidden_tag() }}
+            {{ password_form.current_password.label(class="form-label") }}
+            {{ password_form.current_password(class="form-control") }}
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-primary">Продолжить</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}

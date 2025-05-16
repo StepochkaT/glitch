@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block content %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
+<div class="container mt-4">
+    <h2 class="mb-4">Добавить операцию</h2>
+
+    <form method="post">
+        {{ form.hidden_tag() }}
+
+        <div class="mb-3">
+            {{ form.date.label(class="form-label") }}
+            {{ form.date(class="form-control", id="date-input", type="text") }}
+            {% if form.date.errors %}
+                <div class="text-danger">{{ form.date.errors[0] }}</div>
+            {% endif %}
+        </div>
+
+        <div class="mb-3">
+            {{ form.amount.label(class="form-label") }}
+            {{ form.amount(class="form-control") }}
+            {% if form.amount.errors %}
+                <div class="text-danger">{{ form.amount.errors[0] }}</div>
+            {% endif %}
+        </div>
+
+        <div class="mb-3">
+            {{ form.type.label(class="form-label") }}
+            {{ form.type(class="form-select", id="type-select") }}
+            {% if form.type.errors %}
+                <div class="text-danger">{{ form.type.errors[0] }}</div>
+            {% endif %}
+        </div>
+
+        <div class="mb-3">
+            {{ form.category.label(class="form-label") }}
+            {{ form.category(class="form-select", id="category-select") }}
+            {% if form.category.errors %}
+                <div class="text-danger">{{ form.category.errors[0] }}</div>
+            {% endif %}
+        </div>
+
+        <div class="mb-3">
+            {{ form.description.label(class="form-label") }}
+            {{ form.description(class="form-control") }}
+        </div>
+
+        <div>
+            {{ form.submit(class="btn btn-primary") }}
+        </div>
+    </form>
+</div>
+
+<script>
+    flatpickr("#date-input", {
+    enableTime: true,
+    dateFormat: "Y-m-d H:i:S",
+    time_24hr: true
+});
+
+    document.getElementById("type-select").addEventListener("change", function () {
+        const selectedType = this.value;
+        fetch(`/get_categories/${selectedType}`)
+            .then(response => response.json())
+            .then(data => {
+                const categorySelect = document.getElementById("category-select");
+                categorySelect.innerHTML = "";
+                for (const [id, name] of data) {
+                    const option = document.createElement("option");
+                    option.value = id;
+                    option.textContent = name;
+                    categorySelect.appendChild(option);
+                }
+            });
+    });
+
+    window.addEventListener("DOMContentLoaded", () => {
+        document.getElementById("type-select").dispatchEvent(new Event("change"));
+    });
+</script>
+{% endblock %}

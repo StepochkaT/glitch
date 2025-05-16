@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2 class="mb-4">Категории</h2>
+
+<!-- Карточка: Добавление категории -->
+<div class="card p-3 mb-4 shadow-sm border-light">
+    <h5 class="mb-3">Добавить новую категорию</h5>
+    <form method="post" class="row g-2 align-items-center">
+        {{ form.hidden_tag() }}
+        <div class="col-md-5">
+            {{ form.name(class="form-control", placeholder="Имя категории") }}
+        </div>
+        <div class="col-md-3">
+            {{ form.type(class="form-select") }}
+        </div>
+        <div class="col-md-2">
+            {{ form.submit(class="btn btn-success w-100") }}
+        </div>
+    </form>
+</div>
+
+<!-- Карточка: Поиск -->
+<div class="card p-3 mb-4 shadow-sm border-light">
+    <form method="get" class="row g-2 align-items-center" id="search-form">
+        <div class="col-md-5">
+            <input type="text" name="search" class="form-control" placeholder="Поиск по имени"
+                   value="{{ request.args.get('search', '') }}" id="search-input">
+        </div>
+        <div class="col-md-3">
+            <div class="form-check">
+                <input type="checkbox" name="show_my" value="1" class="form-check-input"
+                       id="toggle-my-categories" {% if show_my %}checked{% endif %}>
+                <label class="form-check-label" for="toggle-my-categories">
+                    Только мои категории
+                </label>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Таблицы категорий -->
+{% if user_categories or base_categories %}
+    {% if not show_my %}
+    <div id="base-categories-block">
+        <h5 class="mt-4">Базовые категории</h5>
+        <table class="table table-striped mt-2">
+            <thead>
+                <tr>
+                    <th>Название</th>
+                    <th>Тип</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for category in base_categories %}
+                    <tr>
+                        <td>
+                            <a href="{{ url_for('operations', selected_category=category.id) }}">
+                                {{ category.name }}
+                            </a>
+                        </td>
+                        <td>{{ 'Доход' if category.type == 'income' else 'Расход' }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    {% if user_categories %}
+        <h5 class="mt-4">Мои категории</h5>
+        <table class="table table-striped mt-2">
+            <thead>
+                <tr>
+                    <th>Название</th>
+                    <th>Тип</th>
+                    <th style="width: 80px;"></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for category in user_categories %}
+                    <tr>
+                        <td>
+                            <a href="{{ url_for('operations', selected_category=category.id) }}">
+                                {{ category.name }}
+                            </a>
+                        </td>
+                        <td>{{ 'Доход' if category.type == 'income' else 'Расход' }}</td>
+                        <td>
+                            <form method="POST" action="{{ url_for('delete_category', id=category.id) }}"
+                                  onsubmit="return confirm('Удалить категорию? Все операции с этой категорией также будут удалены.');">
+                                <input type="hidden" name="page" value="{{ current_page }}">
+                                <input type="hidden" name="search_query" value="{{ search_query }}">
+                                <button type="submit" class="btn btn-danger btn-sm">Удалить</button>
+                            </form>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+
+    {% if total_pages > 1 %}
+        <nav class="mt-4">
+            <ul class="pagination">
+                {% for page_num in range(1, total_pages + 1) %}
+                    <li class="page-item {% if page_num == current_page %}active{% endif %}">
+                        <a class="page-link"
+                           href="?page={{ page_num }}&search={{ search_query }}{% if show_my %}&show_my=1{% endif %}">
+                            {{ page_num }}
+                        </a>
+                    </li>
+                {% endfor %}
+            </ul>
+        </nav>
+    {% endif %}
+{% else %}
+    <p class="mt-4">Категории не найдены.</p>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const searchInput = document.getElementById("search-input");
+        const toggleCheckbox = document.getElementById("toggle-my-categories");
+        const form = document.getElementById("search-form");
+        const baseCategoriesBlock = document.getElementById("base-categories-block");
+
+        function submitSearchForm() {
+            form.submit();
+        }
+
+        if (searchInput) {
+            searchInput.addEventListener("input", function () {
+                clearTimeout(searchInput.dataset.timeout);
+                searchInput.dataset.timeout = setTimeout(submitSearchForm, 400); // задержка
+            });
+        }
+
+        if (toggleCheckbox) {
+            toggleCheckbox.addEventListener("change", submitSearchForm);
+        }
+
+        if (toggleCheckbox && baseCategoriesBlock) {
+            baseCategoriesBlock.style.display = toggleCheckbox.checked ? "none" : "block";
+        }
+    });
+</script>
+{% endblock %}

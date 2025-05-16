@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Статистика</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: #f8f9fa;
+        }
+
+        h2, h5 {
+            font-weight: 600;
+            color: #343a40;
+        }
+
+        .tab-content {
+            margin-top: 30px;
+        }
+
+        .nav-tabs .nav-link.active {
+            background-color: #e9ecef;
+            border-color: #dee2e6 #dee2e6 #f8f9fa;
+        }
+
+        .plot-container {
+            background-color: #ffffff;
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+
+        table thead {
+            background-color: #e2e3e5;
+        }
+
+        .table td, .table th {
+            vertical-align: middle;
+        }
+
+        .search-bar {
+            margin-bottom: 15px;
+        }
+
+        .tooltip-inner {
+            max-width: 200px;
+            text-align: left;
+        }
+    </style>
+</head>
+<body class="container mt-4">
+    <h2 class="mb-4">Статистика</h2>
+
+    <ul class="nav nav-tabs" id="statsTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="charts-tab" data-bs-toggle="tab" data-bs-target="#charts" type="button" role="tab">Графики</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="budget-tab" data-bs-toggle="tab" data-bs-target="#budget" type="button" role="tab">Бюджет</button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="statsTabContent">
+        <div class="tab-pane fade show active" id="charts" role="tabpanel">
+            <form method="get" id="filterForm" class="row g-3 align-items-end mt-3">
+                <div class="col-md-6">
+                    <label for="date_range" class="form-label">Выберите диапазон дат:</label>
+                    <div class="input-group">
+                        <input type="text" id="date_range" name="date_range" class="form-control" value="{{ date_range }}">
+                        <button type="button" class="btn btn-outline-secondary" id="openPicker">📅</button>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100">Показать</button>
+                </div>
+            </form>
+
+            <div class="row mt-4">
+                <div class="col-md-6 plot-container">
+                    <div id="pieChart"></div>
+                </div>
+                <div class="col-md-6 plot-container">
+                    <div id="lineChart"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-pane fade" id="budget" role="tabpanel">
+            {% if not comparison_rows %}
+            <div class="alert alert-warning d-flex justify-content-between align-items-center mt-4" role="alert">
+                <div>
+                     <strong>Вы ещё не установили бюджет на этот месяц</strong>
+                </div>
+                <a href="{{ url_for('budget') }}" class="btn btn-sm btn-warning">Установить бюджет</a>
+           </div>
+            {% else %}
+
+            <div class="row mt-4">
+                <div class="col-md-7 plot-container">
+                    <div id="barChart"></div>
+                </div>
+                <div class="col-md-5">
+                    <div class="search-bar">
+                        <input type="text" id="searchInput" class="form-control" placeholder="Поиск по категориям...">
+                    </div>
+                    <h5 class="mb-3">Сравнение с планом</h5>
+                    <table class="table table-bordered" id="comparisonTable">
+                        <thead>
+                            <tr>
+                                <th>Категория</th>
+                                <th>Факт</th>
+                                <th>План</th>
+                                <th>Уже потрачено (%)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="comparisonBody"></tbody>
+                    </table>
+                    <nav>
+                        <ul class="pagination justify-content-center" id="pagination"></ul>
+                    </nav>
+                </div>
+                <div id="budgetProgressWrapper" class="my-3">
+  <div class="d-flex justify-content-between">
+    <span id="budgetProgressText">Потрачено 0 из 0 ₽</span>
+    <span id="budgetProgressPercent">0%</span>
+  </div>
+  <div class="progress">
+    <div id="budgetProgressBar" class="progress-bar" role="progressbar" style="width: 0%;" aria-valuemin="0" aria-valuemax="100"></div>
+  </div>
+</div>
+
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+<script>
+    const labels = {{ labels|tojson }};
+    const values = {{ values|tojson }};
+    const currentDateRange = "{{ date_range }}";
+    const categoryToId = {{ category_to_id_map|tojson }};
+    const dayLabels = {{ day_labels|tojson }};
+    const dayExpenses = {{ day_expenses|tojson }};
+    const dayIncomes = {{ day_incomes|tojson }};
+    const comparisonRows = {{ comparison_rows|tojson }};
+    const rowsPerPage = 6;
+    let currentPage = 1;
+    let filteredRows = comparisonRows;
+
+    document.addEventListener("DOMContentLoaded", function () {
+        const fp = flatpickr("#date_range", {
+            mode: "range",
+            dateFormat: "Y-m-d"
+        });
+
+        document.getElementById("openPicker").addEventListener("click", function () {
+            fp.open();
+        });
+
+        Plotly.newPlot("pieChart", [{
+            type: 'pie',
+            labels: labels,
+            values: values,
+            textinfo: "label+percent",
+            hoverinfo: "label+value",
+            hole: 0.4
+        }], {
+            title: "Расходы по категориям"
+        });
+
+        document.getElementById('pieChart').on('plotly_click', function (data) {
+            const clickedLabel = data.points[0].label;
+            const categoryId = categoryToId[clickedLabel];
+            if (categoryId !== undefined) {
+                const url = `/operations?selected_category=${categoryId}&date_range=${encodeURIComponent(currentDateRange)}&selected_type=expense`;
+                window.location.href = url;
+            }
+        });
+
+        const avgExpense = dayExpenses.reduce((a, b) => a + b, 0) / dayExpenses.length;
+const avgIncome = dayIncomes.reduce((a, b) => a + b, 0) / dayIncomes.length;
+
+Plotly.newPlot("lineChart", [
+    {
+        type: 'scatter',
+        mode: 'lines+markers',
+        name: 'Расходы',
+        x: dayLabels,
+        y: dayExpenses,
+        line: { color: 'red' }
+    },
+    {
+        type: 'scatter',
+        mode: 'lines+markers',
+        name: 'Доходы',
+        x: dayLabels,
+        y: dayIncomes,
+        line: { color: 'green' }
+    }
+], {
+    title: "Доходы и расходы по дням",
+    xaxis: { title: "Дата", tickangle: -45 },
+    yaxis: { title: "Сумма (₽)" }
+});
+
+
+        document.getElementById('lineChart').on('plotly_click', function (data) {
+            const clickedDate = data.points[0].x;
+            const url = `/operations?date_range=${encodeURIComponent(clickedDate + ' to ' + clickedDate)}`;
+            window.location.href = url;
+        });
+
+        const barCategories = comparisonRows.map(r => r.category);
+        const barFacts = comparisonRows.map(r => r.fact);
+        const barPlans = comparisonRows.map(r => r.plan);
+
+        Plotly.newPlot("barChart", [
+            {
+                x: barCategories,
+                y: barFacts,
+                name: 'Факт',
+                type: 'bar',
+                marker: { color: 'rgba(255,99,132,0.7)' }
+            },
+            {
+                x: barCategories,
+                y: barPlans,
+                name: 'План',
+                type: 'bar',
+                marker: { color: 'rgba(54,162,235,0.7)' }
+            }
+        ], {
+            barmode: 'group',
+            title: 'Факт | План по категориям',
+            xaxis: { title: "Категория" },
+            yaxis: { title: "Сумма (₽)" }
+        });
+
+        function renderTablePage(page) {
+            const start = (page - 1) * rowsPerPage;
+            const end = start + rowsPerPage;
+            const pageRows = filteredRows.slice(start, end);
+            const tbody = document.getElementById("comparisonBody");
+            tbody.innerHTML = "";
+
+            pageRows.forEach(row => {
+                const tr = document.createElement("tr");
+
+                let style = "";
+                let tooltip = "";
+
+                if (row.percent >= 100) {
+                    style = "background-color: #d1382e";
+
+                } else if (row.percent >= 85) {
+                    style = "background-color: #e86217";
+                } else if (row.percent >= 60) {
+                    style = "background-color: #e9ba16";
+                } else {
+                    style = "background-color: #75c53a";
+                }
+
+                tr.innerHTML = `
+    <td style="${style}"  title="${row.category}">${row.category}</td>
+    <td style="${style}"  title="${row.fact}₽">${row.fact}</td>
+    <td style="${style}"  title="${row.plan}₽">${row.plan}</td>
+    <td style="${style}"  title="${row.percent}%">${row.percent}%</td>
+`;
+
+                tbody.appendChild(tr);
+            });
+
+
+            renderPagination();
+        }
+
+        function renderPagination() {
+            const totalPages = Math.ceil(filteredRows.length / rowsPerPage);
+            const pagination = document.getElementById("pagination");
+            pagination.innerHTML = "";
+            for (let i = 1; i <= totalPages; i++) {
+                const li = document.createElement("li");
+                li.className = "page-item" + (i === currentPage ? " active" : "");
+                li.innerHTML = `<a class="page-link" href="#">${i}</a>`;
+                li.addEventListener("click", (e) => {
+                    e.preventDefault();
+                    currentPage = i;
+                    renderTablePage(i);
+                });
+                pagination.appendChild(li);
+            }
+        }
+
+        document.getElementById("searchInput").addEventListener("input", function () {
+            const value = this.value.toLowerCase();
+            filteredRows = comparisonRows.filter(r => r.category.toLowerCase().includes(value));
+            currentPage = 1;
+            renderTablePage(currentPage);
+        });
+
+        renderTablePage(currentPage);
+        updateBudgetProgress();
+    });
+function updateBudgetProgress() {
+    const totalFact = filteredRows.reduce((sum, row) => sum + row.fact, 0);
+    const totalPlan = filteredRows.reduce((sum, row) => sum + row.plan, 0);
+
+    const percent = totalPlan > 0 ? Math.min((totalFact / totalPlan) * 100, 150).toFixed(1) : 0;
+
+    const bar = document.getElementById("budgetProgressBar");
+    const text = document.getElementById("budgetProgressText");
+    const percentText = document.getElementById("budgetProgressPercent");
+
+    bar.style.width = percent + "%";
+    bar.setAttribute("aria-valuenow", percent);
+    percentText.textContent = percent + "%";
+    text.textContent = `Потрачено ${totalFact} из ${totalPlan} ₽`;
+
+    if (percent >= 100) {
+        bar.className = "progress-bar bg-danger";
+    } else if (percent >= 85) {
+        bar.className = "progress-bar bg-warning";
+    } else {
+        bar.className = "progress-bar bg-success";
+    }
+}
+
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1 class="mb-4">Конвертер валют</h1>
+
+<div class="row align-items-center mb-3">
+    <div class="col-3">
+        <input type="number" id="amount_left" class="form-control" value="1" step="0.5">
+    </div>
+    <div class="col-2">
+        <select id="from_currency" class="form-select">
+    {% for code, name in currencies.items() %}
+        <option value="{{ code }}">{{ name }} | {{ code }}</option>
+    {% endfor %}
+        </select>
+    </div>
+
+    <div class="col-2 text-center">
+        <button id="swap_btn" class="btn btn-outline-secondary" title="Поменять валюты местами">⇆</button>
+    </div>
+
+    <div class="col-3">
+        <input type="number" id="amount_right" class="form-control" value="1" step="0.5">
+    </div>
+    <div class="col-2">
+        <select id="to_currency" class="form-select">
+    {% for code, name in currencies.items() %}
+        <option value="{{ code }}">{{ name }} | {{ code }}</option>
+    {% endfor %}
+        </select>
+    </div>
+</div>
+
+<div id="graph-container" style="width: 100%; height: 400px;"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const fromCurrency = document.getElementById("from_currency");
+    const toCurrency = document.getElementById("to_currency");
+    const amountLeft = document.getElementById("amount_left");
+    const amountRight = document.getElementById("amount_right");
+
+    let lastEdited = "left";
+
+    function updateSelectOptions() {
+        const toVal = toCurrency.value;
+        const fromVal = fromCurrency.value;
+
+        Array.from(fromCurrency.options).forEach(opt => {
+            opt.disabled = opt.value === toVal;
+        });
+        Array.from(toCurrency.options).forEach(opt => {
+            opt.disabled = opt.value === fromVal;
+        });
+    }
+
+    async function fetchConversion(from, to, amount) {
+        const response = await fetch("/currency/data", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                from_currency: from,
+                to_currency: to,
+                amount: amount
+            })
+        });
+
+        if (response.ok) {
+    const data = await response.json();
+    const xData = data.graph.x;
+    const yData = data.graph.y;
+
+    const firstValue = yData[0];
+    const lastValue = yData[yData.length - 1];
+    const percentChange = ((lastValue - firstValue) / firstValue) * 100;
+
+    const isGrowth = percentChange >= 0;
+    const lineColor = isGrowth ? 'green' : 'red';
+    const formattedChange = (isGrowth ? '+' : '') + percentChange.toFixed(2) + '%';
+
+    const trace = {
+        x: xData,
+        y: yData,
+        mode: 'lines+markers',
+        name: `${data.graph.from}/${data.graph.to}`,
+        hovertemplate: "Дата: %{x|%Y-%m-%d %H:%M}<br>Курс: %{y:.4f}<extra></extra>",
+        line: { color: lineColor }
+    };
+
+    const layout = {
+        title: `Курс ${data.graph.from} к ${data.graph.to} (${formattedChange})`,
+        xaxis: { title: 'Дата' },
+        yaxis: { title: 'Курс' },
+        hovermode: 'x unified',
+        margin: { l: 40, r: 40, t: 50, b: 40 }
+    };
+
+    Plotly.newPlot('graph-container', [trace], layout, { responsive: true });
+
+    if (lastEdited === "left") {
+        amountRight.value = (data.converted).toFixed(4);
+    } else {
+        amountLeft.value = (data.converted).toFixed(4);
+    }
+}
+
+    }
+
+    function triggerConversion() {
+        const from = fromCurrency.value;
+        const to = toCurrency.value;
+        const amount = lastEdited === "left" ? amountLeft.value : amountRight.value;
+
+        if (from !== to && amount !== "") {
+            fetchConversion(lastEdited === "left" ? from : to,
+                            lastEdited === "left" ? to : from,
+                            amount);
+        }
+    }
+
+    [fromCurrency, toCurrency].forEach(el => {
+        el.addEventListener("change", () => {
+            updateSelectOptions();
+            triggerConversion();
+        });
+    });
+
+    amountLeft.addEventListener("input", () => {
+        lastEdited = "left";
+        triggerConversion();
+    });
+
+    amountRight.addEventListener("input", () => {
+        lastEdited = "right";
+        triggerConversion();
+    });
+
+    updateSelectOptions();
+    triggerConversion();
+
+    document.getElementById("swap_btn").addEventListener("click", () => {
+        const from = fromCurrency.value;
+        fromCurrency.value = toCurrency.value;
+        toCurrency.value = from;
+
+        const leftVal = amountLeft.value;
+        amountLeft.value = amountRight.value;
+        amountRight.value = leftVal;
+
+        lastEdited = "left";
+        updateSelectOptions();
+        triggerConversion();
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+
+    {% if not authenticated %}
+        <div class="text-center">
+            <h1 class="mb-3">Добро пожаловать</h1>
+            <p class="lead">Зарегистрируйтесь или войдите в аккаунт</p>
+        </div>
+    {% else %}
+
+    {% if budget_missing %}
+<div class="alert alert-warning d-flex justify-content-between align-items-center" role="alert">
+    <div>
+        <strong>Внимание:</strong> Вы ещё не установили бюджет на этот месяц.
+    </div>
+    <a href="{{ url_for('budget') }}" class="btn btn-sm btn-warning">Установить бюджет</a>
+</div>
+{% endif %}
+
+
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3>{{ current_month }}</h3>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <a href="/operations?selected_type=income" class="text-decoration-none">
+                    <div class="card text-white bg-success mb-3 shadow-sm card-clickable h-100 position-relative">
+                        <div class="card-body">
+                            <h5 class="card-title">Доходы</h5>
+                            <p class="card-text fs-4">{{ income }} руб.</p>
+                            {% if income_change is not none %}
+                                <p class="mb-0">
+                                    {% if income_change >= 0 %}
+                                        <span class="badge bg-light text-success">▲ +{{ income_change }}%</span>
+                                    {% else %}
+                                        <span class="badge bg-light text-danger">▼ {{ income_change }}%</span>
+                                    {% endif %}
+                                </p>
+                            {% endif %}
+                            <div class="overlay-text">Посмотреть операции</div>
+                        </div>
+                    </div>
+                </a>
+            </div>
+
+            <div class="col-md-4">
+                <a href="/operations?selected_type=expense" class="text-decoration-none">
+                    <div class="card text-white bg-danger mb-3 shadow-sm card-clickable h-100 position-relative">
+                        <div class="card-body">
+                            <h5 class="card-title">Расходы</h5>
+                            <p class="card-text fs-4">{{ expense }} руб.</p>
+                            {% if expense_change is not none %}
+                                <p class="mb-0">
+                                    {% if expense_change >= 0 %}
+                                        <span class="badge bg-light text-danger">▲ +{{ expense_change }}%</span>
+                                    {% else %}
+                                        <span class="badge bg-light text-success">▼ {{ expense_change }}%</span>
+                                    {% endif %}
+                                </p>
+                            {% endif %}
+                            <div class="overlay-text">Посмотреть операции</div>
+                        </div>
+                    </div>
+                </a>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card text-white h-100 bg-primary mb-3 shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title">Баланс</h5>
+                        <p class="card-text fs-4">{{ balance }} руб.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-md-4">
+                <a href="/add_operation" class="text-decoration-none">
+                    <div class="card text-center shadow-sm h-100 card-hover">
+                        <div class="card-body">
+                            <h5 class="card-title">Добавить операцию</h5>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            <div class="col-md-4">
+                <a href="/operations" class="text-decoration-none">
+                    <div class="card text-center shadow-sm h-100 card-hover">
+                        <div class="card-body">
+                            <h5 class="card-title">Операции</h5>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            <div class="col-md-4">
+                <a href="/categories" class="text-decoration-none">
+                    <div class="card text-center shadow-sm h-100 card-hover">
+                        <div class="card-body">
+                            <h5 class="card-title">Менеджер категорий</h5>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            <div class="col-md-4">
+                <a href="/currency" class="text-decoration-none">
+                    <div class="card text-center shadow-sm h-100 card-hover">
+                        <div class="card-body">
+                            <h5 class="card-title">Валюты</h5>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            <div class="col-md-4">
+                <a href="/statistics" class="text-decoration-none">
+                    <div class="card text-center shadow-sm h-100 card-hover">
+                        <div class="card-body">
+                            <h5 class="card-title">Статистика</h5>
+                        </div>
+                    </div>
+                </a>
+            </div>
+            <div class="col-md-4">
+                <a href="/calculators" class="text-decoration-none">
+                    <div class="card text-center shadow-sm h-100 card-hover">
+                        <div class="card-body">
+                            <h5 class="card-title">Калькуляторы</h5>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        </div>
+
+    {% endif %}
+
+</div>
+
+<style>
+.card-hover {
+    transition: transform 0.3s, box-shadow 0.3s;
+}
+.card-hover:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+}
+
+.card-clickable {
+    overflow: hidden;
+    position: relative;
+    transition: background-color 0.3s;
+}
+
+.card-clickable:hover {
+    filter: brightness(1.15);
+    cursor: pointer;
+}
+
+.overlay-text {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    font-size: 0.9rem;
+    opacity: 0;
+    transition: opacity 0.3s;
+    color: #fff;
+    font-weight: bold;
+}
+
+.card-clickable:hover .overlay-text {
+    opacity: 1;
+}
+</style>
+{% endblock %}

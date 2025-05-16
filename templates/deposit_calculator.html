@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-md-8">
+    <form method="post" role="form">
+        {{ form.hidden_tag() }}
+        <div class="container">
+        <div class="form-group col-md-6">
+            <br>
+            <div>
+                <h5>{{ form.name.label()}}</h5>
+                 {{ form.name(class="form-control", type="text", placeholder="Введите название вклада") }}
+            </div>
+        </div>
+            <div class="container">
+                <div class="form-group col-md-6">
+                    <h5>{{ form.date.label()}}</h5>
+                     {{ form.date(class="form-control", type="date") }}
+                </div>
+                </div>
+            <div class="container">
+                <div class="form-group col-md-6">
+                    <h5>{{ form.amount.label() }}</h5>
+                     {{ form.amount(class="form-control", type="number", placeholder="Введите сумму вклада") }}
+                </div>
+            </div>
+            <div class="container">
+                <div class="row">
+                    <div class="form-group col-md-3">
+                        <h5>{{ form.term.label() }}</h5>
+                        {{form.term(class="form-control", type="number")}}
+                    </div>
+                    <div class="form-group col-md-3">
+                        <h5>{{ form.type_term.label()}}</h5>
+                        {{ form.type_term(class="form-control", type="checkbox")}}
+                    </div>
+                </div>
+            </div>
+            <div class="container">
+                <div class="form-group col-md-6">
+                    <h5>{{ form.percent.label()}}</h5>
+                    {{ form.percent(class="form-control", type="number")}}
+                </div>
+            </div>
+            <div class="container">
+                <div class="form-group col-md-3">
+                    {{ form.submit(class="btn btn-success form-control", type="submit")}}
+                </div>
+            </div>
+        </div>
+    </form>
+            </div>
+            {% if is_table %}
+        <div class="col-md-4">
+            <br>
+            <div class="card text-white bg-info mb-3 shadow-sm h-20 position-relative">
+                        <div class="card-body">
+                            <h3>Сумма в конце срока</h3>
+                            <p class="card-text fs-4">{{amount_received}} ₽</p>
+                        </div>
+                    </div>
+            <div class="card text-white bg-success mb-3 shadow-sm h-20 position-relative">
+                        <div class="card-body">
+                            <h3>Доход</h3>
+                            <p class="card-text fs-4">{{income}} ₽</p>
+                        </div>
+                    </div>
+
+    </div>
+</div>
+</div>
+<br>
+<table class="table table-hover table-condensed">
+        <thead>
+            <tr>
+                <th>Дата</th>
+                <th>Начислено процентов, ₽</th>
+            </tr>
+        </thead>
+
+        <tbody>
+        {% for i in list_of_charges %}
+            <tr>
+                <td>{{i[0]}}</td>
+                <td class="text-success">{{i[1]}}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+<button class="btn btn-success" id="exportCSV">Экспорт данных в CSV</button>
+
+<script>
+document.getElementById('exportCSV').addEventListener('click', function () {
+    const headers = ["Дата", "Начислено процентов, ₽"];
+    const rows = [
+        {% for i in repayment_list %}
+            [
+                "{{i[0]}}",
+                "{{i[1]}}"
+            ],
+        {% endfor %}
+    ];
+
+    const csvRows = [];
+
+    rows.forEach(row => {
+        const escaped = row.map(field => `"${field.replaceAll('"', '""')}"`);
+        csvRows.push(escaped.join(';'));
+    });
+
+    const csvContent = csvRows.join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", "{{name_file}}.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+});
+</script>
+{% endif %}
+{% endblock %}
