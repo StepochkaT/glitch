@@ -70,7 +70,7 @@ def logout():
 
 def main():
     db_session.global_init("db/database2.db")
-    app.run()
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
 
 
 @app.route("/")
