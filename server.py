@@ -149,7 +149,6 @@ def reqister():
         )
         user.set_password(form.password.data)
         db_sess.add(user)
-        print('smth')
         db_sess.commit()
         return redirect('/login')
     return render_template('register.html', title='Регистрация', form=form)
@@ -640,8 +639,11 @@ def profile():
 
     if name_form.validate_on_submit():
         sess = db_session.create_session()
-        current_user.username = name_form.username.data
-        sess.commit()
+        user = sess.query(User).get(current_user.id)
+
+        if user:
+            user.username = name_form.username.data
+            sess.commit()
         flash("Имя пользователя обновлено.", "success")
         return redirect(url_for("profile"))
 
@@ -670,9 +672,12 @@ def change_password_step2():
     form = PasswordStepTwoForm()
     if form.validate_on_submit():
         sess = db_session.create_session()
-        current_user.set_password(form.new_password.data)
-        sess.commit()
-        flash("Пароль успешно изменён.", "success")
+        user = sess.query(User).get(current_user.id)
+        if user:
+            user.set_password(form.new_password.data)
+            sess.commit()
+            flash("Пароль успешно изменён.", "success")
+
         return redirect(url_for("profile"))
 
     return render_template("change_password_step2.html", form=form)

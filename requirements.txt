@@ -4,5 +4,6 @@ Flask-Login
 Flask-WTF
 pillow
 werkzeug
-requests
-
+sqlalchemy
+requests==2.28.2
+urllib3==1.26.16
